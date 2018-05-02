@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-errors/errors"
 	"gopkg.in/square/go-jose.v2"
+	"net/url"
 )
 
 var (
@@ -18,6 +19,7 @@ var (
 
 type JWKClientOptions struct {
 	URI string
+	HTTPProxy string
 }
 
 type JWKS struct {
@@ -74,7 +76,15 @@ func (j *JWKClient) GetKey(ID string) (jose.JSONWebKey, error) {
 }
 
 func (j *JWKClient) downloadKeys() ([]jose.JSONWebKey, error) {
-	resp, err := http.Get(j.options.URI)
+	httpClient := http.DefaultClient
+	if j.options.HTTPProxy != "" {
+		proxyURL, err := url.Parse(j.options.HTTPProxy)
+		if err != nil {
+			return nil, err
+		}
+		httpClient = &http.Client{Transport: &http.Transport{Proxy: http.ProxyURL(proxyURL)}}
+	}
+	resp, err := httpClient.Get(j.options.URI)
 
 	if err != nil {
 		return []jose.JSONWebKey{}, err
